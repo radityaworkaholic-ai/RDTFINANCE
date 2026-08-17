@@ -103,7 +103,7 @@ class HomePage extends StatelessWidget {
                 ),
                 child: const Center(
                   child: Text(
-                    "Graph will be here",
+                    "const CashflowChart()",
                     style: TextStyle(color: Colors.white54),
                   ),
                 ),
