@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'widgets/cashflow_chart.dart';
 
 void main() => runApp(const RDTFinance());
 
