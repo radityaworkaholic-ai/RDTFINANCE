@@ -1,3 +1,4 @@
+import 'screens/chat_page.dart';
 import 'package:flutter/material.dart';
 import 'widgets/cashflow_chart.dart';
 
@@ -16,7 +17,7 @@ class RDTFinance extends StatelessWidget {
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
       ),
-      home: const HomePage(),
+      home: const ChatPage(),
     );
   }
 }
