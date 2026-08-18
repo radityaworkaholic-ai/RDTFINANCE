@@ -28,6 +28,18 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+bottomNavigationBar: BottomNavigationBar(
+  backgroundColor: Colors.black,
+  selectedItemColor: Colors.white,
+  unselectedItemColor: Colors.grey,
+  type: BottomNavigationBarType.fixed,
+  items: const [
+    BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+    BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
+    BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Stats"),
+    BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+  ],
+),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
