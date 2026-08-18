@@ -12,7 +12,7 @@ body: Padding(
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Text(
-              "Hi Raditya 💸\nKetik transaksi seperti:\nGlenfiddich 1.7000k BCA",
+              "Hi Mr.Raditya 💸\nKetik transaksi seperti:\nGlenfiddich 1.7000k BCA",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -23,7 +23,7 @@ body: Padding(
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                hintText: "Tulis transaksi...",
+                hintText: "Tulis transaksi ya puki...",
                 filled: true,
                 fillColor: const Color(0xFF111111),
                 border: OutlineInputBorder(
