@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'database/database_helper.dart';
 import 'screens/chat_page.dart';
 import 'widgets/cashflow_chart.dart';
 
@@ -29,10 +30,47 @@ class RDTFinance extends StatefulWidget {
 
 class _RDTFinanceState extends State<RDTFinance> {
   int currentIndex = 0;
+  bool isLoading = true;
 
   final List<Transaction> transactions = [];
 
-  void addTransaction(Transaction transaction) {
+  @override
+  void initState() {
+    super.initState();
+    loadTransactions();
+  }
+
+  Future<void> loadTransactions() async {
+    final data = await DatabaseHelper.instance.getTransactions();
+
+    final loadedTransactions = data.map((item) {
+      return Transaction(
+        description: item['description'] as String,
+        amount: (item['amount'] as num).toDouble(),
+        isIncome: item['isIncome'] == 1,
+        payment: item['payment'] as String,
+      );
+    }).toList();
+
+    if (!mounted) return;
+
+    setState(() {
+      transactions.clear();
+      transactions.addAll(loadedTransactions);
+      isLoading = false;
+    });
+  }
+
+  Future<void> addTransaction(Transaction transaction) async {
+    await DatabaseHelper.instance.insertTransaction(
+      description: transaction.description,
+      amount: transaction.amount,
+      isIncome: transaction.isIncome,
+      payment: transaction.payment,
+    );
+
+    if (!mounted) return;
+
     setState(() {
       transactions.add(transaction);
     });
@@ -40,6 +78,18 @@ class _RDTFinanceState extends State<RDTFinance> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
     final pages = [
       HomePage(transactions: transactions),
       ChatPage(onTransactionAdded: addTransaction),
@@ -163,9 +213,7 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Cashflow',
                 style: TextStyle(
@@ -173,9 +221,7 @@ class HomePage extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-
               const SizedBox(height: 12),
-
               Container(
                 height: 180,
                 width: double.infinity,
@@ -186,9 +232,7 @@ class HomePage extends StatelessWidget {
                 ),
                 child: const CashflowChart(),
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 'Recent Transactions',
                 style: TextStyle(
@@ -196,9 +240,7 @@ class HomePage extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-
               const SizedBox(height: 12),
-
               if (transactions.isEmpty)
                 const Text(
                   'Belum ada transaksi.',
