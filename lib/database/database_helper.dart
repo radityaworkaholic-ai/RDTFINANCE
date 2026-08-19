@@ -23,7 +23,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
+
+      // DATABASE BARU
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE transactions (
@@ -32,9 +34,20 @@ class DatabaseHelper {
             amount REAL NOT NULL,
             isIncome INTEGER NOT NULL,
             payment TEXT NOT NULL,
+            category TEXT NOT NULL,
             createdAt TEXT NOT NULL
           )
         ''');
+      },
+
+      // DATABASE LAMA → DATABASE BARU
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('''
+            ALTER TABLE transactions
+            ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'
+          ''');
+        }
       },
     );
   }
@@ -44,6 +57,7 @@ class DatabaseHelper {
     required double amount,
     required bool isIncome,
     required String payment,
+    required String category,
   }) async {
     final db = await database;
 
@@ -54,6 +68,7 @@ class DatabaseHelper {
         'amount': amount,
         'isIncome': isIncome ? 1 : 0,
         'payment': payment,
+        'category': category,
         'createdAt': DateTime.now().toIso8601String(),
       },
     );
