@@ -31,7 +31,11 @@ class _ChatPageState extends State<ChatPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Format belum dikenali.\nContoh: Makan sushi 45k BCA',
+            'Format belum dikenali.\n\n'
+            'Contoh:\n'
+            'Makan sushi 45k BCA\n'
+            'Gaji 5jt BCA\n'
+            'Grab 25.000 OVO',
           ),
         ),
       );
@@ -52,6 +56,16 @@ class _ChatPageState extends State<ChatPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Transaksi berhasil disimpan'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal menyimpan transaksi: $e',
+          ),
         ),
       );
     } finally {
@@ -76,15 +90,46 @@ class _ChatPageState extends State<ChatPage> {
       return null;
     }
 
-    double amount =
-        double.tryParse(match.group(1)!.replaceAll(',', '.')) ?? 0;
-
+    String numberText = match.group(1)!;
     final unit = match.group(2);
 
-    if (unit == 'k' || unit == 'rb' || unit == 'ribu') {
-      amount *= 1000;
-    } else if (unit == 'jt' || unit == 'juta') {
-      amount *= 1000000;
+    double amount;
+
+    if (numberText.contains('.') &&
+        numberText.contains(',')) {
+      numberText = numberText.replaceAll('.', '');
+      numberText = numberText.replaceAll(',', '.');
+
+      amount = double.tryParse(numberText) ?? 0;
+    } else if (unit != null) {
+      numberText = numberText.replaceAll(',', '.');
+
+      amount = double.tryParse(numberText) ?? 0;
+
+      if (unit == 'k' ||
+          unit == 'rb' ||
+          unit == 'ribu') {
+        amount *= 1000;
+      } else if (unit == 'jt' ||
+          unit == 'juta') {
+        amount *= 1000000;
+      }
+    } else if (numberText.contains('.')) {
+      final parts = numberText.split('.');
+
+      if (parts.length == 2 &&
+          parts[1].length == 3) {
+        numberText = numberText.replaceAll('.', '');
+        amount = double.tryParse(numberText) ?? 0;
+      } else {
+        numberText = numberText.replaceAll(',', '.');
+        amount = double.tryParse(numberText) ?? 0;
+      }
+    } else {
+      amount = double.tryParse(
+            numberText.replaceAll(',', '.'),
+          ) ??
+          0;
     }
 
     if (amount <= 0) {
@@ -95,7 +140,9 @@ class _ChatPageState extends State<ChatPage> {
         lower.contains('gaji') ||
         lower.contains('income') ||
         lower.contains('bonus') ||
-        lower.contains('masuk');
+        lower.contains('masuk') ||
+        lower.contains('terima') ||
+        lower.contains('dapat');
 
     String payment = 'Unknown';
 
@@ -105,12 +152,19 @@ class _ChatPageState extends State<ChatPage> {
       payment = 'Mandiri';
     } else if (lower.contains('bri')) {
       payment = 'BRI';
-    } else if (lower.contains('cash') || lower.contains('tunai')) {
+    } else if (lower.contains('bni')) {
+      payment = 'BNI';
+    } else if (lower.contains('cash') ||
+        lower.contains('tunai')) {
       payment = 'Cash';
     } else if (lower.contains('ovo')) {
       payment = 'OVO';
     } else if (lower.contains('gopay')) {
       payment = 'GoPay';
+    } else if (lower.contains('dana')) {
+      payment = 'DANA';
+    } else if (lower.contains('shopeepay')) {
+      payment = 'ShopeePay';
     }
 
     return Transaction(
@@ -153,7 +207,9 @@ class _ChatPageState extends State<ChatPage> {
                     'Ketik transaksi seperti:\n'
                     'Makan sushi 45k BCA\n\n'
                     'Atau:\n'
-                    'Gaji 5jt BCA',
+                    'Gaji 5jt BCA\n\n'
+                    'Bisa juga:\n'
+                    'Grab 25.000 OVO',
                     style: TextStyle(
                       color: Colors.white,
                     ),
@@ -178,7 +234,8 @@ class _ChatPageState extends State<ChatPage> {
                       filled: true,
                       fillColor: const Color(0xFF111111),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius:
+                            BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -191,14 +248,14 @@ class _ChatPageState extends State<ChatPage> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: isSending
-                        ? null
-                        : sendTransaction,
+                    onPressed:
+                        isSending ? null : sendTransaction,
                     icon: isSending
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(
+                            child:
+                                CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.black,
                             ),
