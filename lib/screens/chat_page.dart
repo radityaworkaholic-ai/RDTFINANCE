@@ -158,7 +158,18 @@ class _ChatPageState extends State<ChatPage> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: sendTransaction,
+  onPressed: () {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('TOMBOL BERFUNGSI'),
+      ),
+    );
+  },
+  icon: const Icon(
+    Icons.send,
+    color: Colors.black,
+  ),
+),
                     icon: const Icon(
                       Icons.send,
                       color: Colors.black,
