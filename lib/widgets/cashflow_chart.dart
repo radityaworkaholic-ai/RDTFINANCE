@@ -8,12 +8,27 @@ class CashflowChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return LineChart(
       LineChartData(
-        gridData: FlGridData(show: false),
+        gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(show: false),
+        titlesData: const FlTitlesData(show: false),
         lineBarsData: [
           LineChartBarData(
             isCurved: true,
             color: Colors.white,
             barWidth: 3,
-            dot
+            dotData: const FlDotData(show: false),
+            spots: const [
+              FlSpot(0, 3),
+              FlSpot(1, 2),
+              FlSpot(2, 5),
+              FlSpot(3, 4),
+              FlSpot(4, 6),
+              FlSpot(5, 5),
+              FlSpot(6, 8),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
