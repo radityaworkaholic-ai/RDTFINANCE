@@ -19,11 +19,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     final databasePath = await getDatabasesPath();
-
-    final path = join(
-      databasePath,
-      'rdtfinance.db',
-    );
+    final path = join(databasePath, 'rdtfinance.db');
 
     return await openDatabase(
       path,
@@ -51,7 +47,7 @@ class DatabaseHelper {
   }) async {
     final db = await database;
 
-    return await db.insert(
+    final id = await db.insert(
       'transactions',
       {
         'description': description,
@@ -61,15 +57,19 @@ class DatabaseHelper {
         'createdAt': DateTime.now().toIso8601String(),
       },
     );
+
+    return id;
   }
 
   Future<List<Map<String, dynamic>>> getTransactions() async {
     final db = await database;
 
-    return await db.query(
+    final result = await db.query(
       'transactions',
       orderBy: 'createdAt DESC',
     );
+
+    return result;
   }
 
   Future<int> deleteTransaction(int id) async {
@@ -80,5 +80,15 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<int> getTransactionCount() async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM transactions',
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 }
