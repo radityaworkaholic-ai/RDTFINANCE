@@ -14,69 +14,7 @@ class TransactionDetailPage extends StatelessWidget {
   // DELETE
   // ==========================================================
 
-  Future<void> requestDelete(
-    BuildContext context,
-  ) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: const Color(0xff111111),
-          title: const Text(
-            'Hapus transaksi?',
-          ),
-          content: Text(
-            'Transaksi "${transaction.description}" '
-            'akan dihapus permanen.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child: const Text(
-                'Batal',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              child: const Text(
-                'Hapus',
-                style: TextStyle(
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete != true) {
-      return;
-    }
-
-    // ========================================================
-    // PENTING:
-    // Detail page TIDAK menghapus SQLite langsung.
-    //
-    // Detail hanya mengembalikan TRUE.
-    // main.dart yang menangani delete database + UI.
-    // ========================================================
-
-    if (!context.mounted) return;
-
+  void deleteTransaction(BuildContext context) {
     Navigator.pop(
       context,
       true,
@@ -102,38 +40,46 @@ class TransactionDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
+
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: const Text(
           'Transaction',
         ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(20),
+
         child: Column(
           crossAxisAlignment:
               CrossAxisAlignment.start,
+
           children: [
-            // =================================================
-            // TRANSACTION INFORMATION
-            // =================================================
+            // ==================================================
+            // DETAIL CARD
+            // ==================================================
 
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
+
               decoration: BoxDecoration(
                 color: const Color(0xff111111),
                 borderRadius:
                     BorderRadius.circular(24),
               ),
+
               child: Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
+
                 children: [
                   Text(
                     transaction.isIncome
                         ? 'Income'
                         : 'Expense',
+
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -145,6 +91,7 @@ class TransactionDetailPage extends StatelessWidget {
                   Text(
                     '${transaction.isIncome ? '+' : '-'}'
                     'Rp ${formatMoney(transaction.amount)}',
+
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -183,27 +130,34 @@ class TransactionDetailPage extends StatelessWidget {
 
             const Spacer(),
 
-            // =================================================
+            // ==================================================
             // DELETE BUTTON
-            // =================================================
+            // ==================================================
 
             SizedBox(
               width: double.infinity,
               height: 52,
+
               child: ElevatedButton.icon(
                 onPressed: () {
-                  requestDelete(context);
+                  showDeleteConfirmation(
+                    context,
+                  );
                 },
+
                 icon: const Icon(
                   Icons.delete_outline,
                 ),
+
                 label: const Text(
                   'Delete Transaction',
                 ),
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       Colors.red.shade900,
                   foregroundColor: Colors.white,
+
                   shape:
                       RoundedRectangleBorder(
                     borderRadius:
@@ -227,22 +181,26 @@ class TransactionDetailPage extends StatelessWidget {
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 16,
-      ),
+      padding:
+          const EdgeInsets.only(bottom: 16),
+
       child: Row(
         crossAxisAlignment:
             CrossAxisAlignment.start,
+
         children: [
           SizedBox(
             width: 90,
+
             child: Text(
               title,
+
               style: const TextStyle(
                 color: Colors.grey,
               ),
             ),
           ),
+
           Expanded(
             child: Text(
               value,
@@ -251,6 +209,70 @@ class TransactionDetailPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ==========================================================
+  // DELETE CONFIRMATION
+  // ==========================================================
+
+  void showDeleteConfirmation(
+    BuildContext context,
+  ) {
+    showDialog(
+      context: context,
+
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor:
+              const Color(0xff111111),
+
+          title: const Text(
+            'Hapus transaksi?',
+          ),
+
+          content: const Text(
+            'Transaksi ini akan dihapus '
+            'secara permanen.',
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                );
+              },
+
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                );
+
+                deleteTransaction(
+                  context,
+                );
+              },
+
+              child: const Text(
+                'Hapus',
+                style: TextStyle(
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
