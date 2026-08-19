@@ -19,11 +19,13 @@ class _ChatPageState extends State<ChatPage> {
   void sendTransaction() {
     final text = controller.text.trim();
 
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      return;
+    }
 
-    final parsed = parseTransaction(text);
+    final transaction = parseTransaction(text);
 
-    if (parsed == null) {
+    if (transaction == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -34,8 +36,7 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    widget.onTransactionAdded(parsed);
-
+    widget.onTransactionAdded(transaction);
     controller.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -54,12 +55,12 @@ class _ChatPageState extends State<ChatPage> {
 
     final match = regex.firstMatch(lower);
 
-    if (match == null) return null;
+    if (match == null) {
+      return null;
+    }
 
-    double amount = double.tryParse(
-          match.group(1)!.replaceAll(',', '.'),
-        ) ??
-        0;
+    double amount =
+        double.tryParse(match.group(1)!.replaceAll(',', '.')) ?? 0;
 
     final unit = match.group(2);
 
@@ -83,8 +84,7 @@ class _ChatPageState extends State<ChatPage> {
       payment = 'Mandiri';
     } else if (lower.contains('bri')) {
       payment = 'BRI';
-    } else if (lower.contains('cash') ||
-        lower.contains('tunai')) {
+    } else if (lower.contains('cash') || lower.contains('tunai')) {
       payment = 'Cash';
     } else if (lower.contains('ovo')) {
       payment = 'OVO';
@@ -138,10 +138,10 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     controller: controller,
                     onSubmitted: (_) => sendTransaction(),
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Tulis transaksi...',
-                      hintStyle:
-                          const TextStyle(color: Colors.grey),
+                      hintStyle: const TextStyle(color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFF111111),
                       border: OutlineInputBorder(
@@ -158,18 +158,7 @@ class _ChatPageState extends State<ChatPage> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-  onPressed: () {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('TOMBOL BERFUNGSI'),
-      ),
-    );
-  },
-  icon: const Icon(
-    Icons.send,
-    color: Colors.black,
-  ),
-),
+                    onPressed: sendTransaction,
                     icon: const Icon(
                       Icons.send,
                       color: Colors.black,
