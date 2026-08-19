@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'database/database_helper.dart';
 import 'screens/chat_page.dart';
+import 'screens/transaction_detail_page.dart';
 import 'widgets/cashflow_chart.dart';
 
 void main() {
@@ -21,7 +22,7 @@ class Transaction {
   final String category;
   final DateTime createdAt;
 
-  Transaction({
+  const Transaction({
     this.id,
     required this.description,
     required this.amount,
@@ -73,7 +74,7 @@ class _RDTFinanceState extends State<RDTFinance> {
           description: item['description'] as String,
           amount: (item['amount'] as num).toDouble(),
           isIncome: item['isIncome'] == 1,
-          payment: item['payment'] as String,
+          payment: item['payment'] as String? ?? 'Unknown',
           category: item['category'] as String? ?? 'Other',
           createdAt: DateTime.parse(
             item['createdAt'] as String,
@@ -91,7 +92,9 @@ class _RDTFinanceState extends State<RDTFinance> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('RDTFINANCE DATABASE ERROR: $e');
+      debugPrint(
+        'RDTFINANCE DATABASE ERROR: $e',
+      );
 
       if (!mounted) return;
 
@@ -105,7 +108,9 @@ class _RDTFinanceState extends State<RDTFinance> {
   // ADD TRANSACTION
   // ==========================================================
 
-  Future<void> addTransaction(Transaction transaction) async {
+  Future<void> addTransaction(
+    Transaction transaction,
+  ) async {
     try {
       final id = await DatabaseHelper.instance.insertTransaction(
         description: transaction.description,
@@ -147,8 +152,13 @@ class _RDTFinanceState extends State<RDTFinance> {
   // DELETE TRANSACTION
   // ==========================================================
 
-  Future<void> deleteTransaction(Transaction transaction) async {
+  Future<void> deleteTransaction(
+    Transaction transaction,
+  ) async {
     if (transaction.id == null) {
+      debugPrint(
+        'RDTFINANCE DELETE: transaction ID null',
+      );
       return;
     }
 
@@ -160,8 +170,8 @@ class _RDTFinanceState extends State<RDTFinance> {
 
       debugPrint(
         'RDTFINANCE DATABASE: '
-        '$deletedRows transaksi dihapus '
-        'ID ${transaction.id}',
+        '$deletedRows row dihapus '
+        'untuk ID ${transaction.id}',
       );
 
       if (!mounted) return;
@@ -174,7 +184,9 @@ class _RDTFinanceState extends State<RDTFinance> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Transaksi berhasil dihapus'),
+          content: Text(
+            'Transaksi berhasil dihapus',
+          ),
         ),
       );
     } catch (e) {
@@ -198,7 +210,7 @@ class _RDTFinanceState extends State<RDTFinance> {
   // CONFIRM DELETE
   // ==========================================================
 
-  Future<void> confirmDelete(
+  Future<bool> confirmDelete(
     Transaction transaction,
   ) async {
     final shouldDelete = await showDialog<bool>(
@@ -216,7 +228,10 @@ class _RDTFinanceState extends State<RDTFinance> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
               },
               child: const Text(
                 'Batal',
@@ -227,7 +242,10 @@ class _RDTFinanceState extends State<RDTFinance> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
               },
               child: const Text(
                 'Hapus',
@@ -241,13 +259,17 @@ class _RDTFinanceState extends State<RDTFinance> {
       },
     );
 
-    if (shouldDelete == true) {
-      await deleteTransaction(transaction);
+    if (shouldDelete != true) {
+      return false;
     }
+
+    await deleteTransaction(transaction);
+
+    return true;
   }
 
   // ==========================================================
-  // BUILD APP
+  // BUILD
   // ==========================================================
 
   @override
@@ -285,8 +307,10 @@ class _RDTFinanceState extends State<RDTFinance> {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
+        useMaterial3: true,
       ),
       home: Scaffold(
+        backgroundColor: Colors.black,
         body: pages[currentIndex],
         bottomNavigationBar: BottomNavigationBar(
           backgroundColor: Colors.black,
@@ -329,7 +353,7 @@ class _RDTFinanceState extends State<RDTFinance> {
 
 class HomePage extends StatelessWidget {
   final List<Transaction> transactions;
-  final Future<void> Function(Transaction) onDeleteTransaction;
+  final Future<bool> Function(Transaction) onDeleteTransaction;
 
   const HomePage({
     super.key,
@@ -381,7 +405,8 @@ class HomePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Balance',
@@ -467,124 +492,76 @@ class HomePage extends StatelessWidget {
                   ),
                 )
               else
-                ...transactions.reversed
-                    .take(5)
-                    .map(
-                      (transaction) {
-                        return Dismissible(
-                          key: ValueKey(
-                            transaction.id,
-                          ),
+                ...transactions.reversed.take(5).map(
+                  (transaction) {
+                    return Dismissible(
+                      key: ValueKey(transaction.id),
+                      direction:
+                          DismissDirection.endToStart,
 
-                          direction:
-                              DismissDirection.endToStart,
-
-                          confirmDismiss: (_) async {
-                            await onDeleteTransaction(
-                              transaction,
-                            );
-
-                            return false;
-                          },
-
-                          background: Container(
-                            margin:
-                                const EdgeInsets.only(
-                              bottom: 10,
-                            ),
-                            alignment:
-                                Alignment.centerRight,
-                            padding:
-                                const EdgeInsets.only(
-                              right: 20,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius:
-                                  BorderRadius.circular(
-                                16,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          child: Container(
-                            margin:
-                                const EdgeInsets.only(
-                              bottom: 10,
-                            ),
-                            padding:
-                                const EdgeInsets.all(16),
-                            decoration:
-                                BoxDecoration(
-                              color:
-                                  const Color(0xff111111),
-                              borderRadius:
-                                  BorderRadius.circular(
-                                16,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  transaction.isIncome
-                                      ? Icons
-                                          .arrow_downward
-                                      : Icons
-                                          .arrow_upward,
-                                  color: Colors.white,
-                                ),
-
-                                const SizedBox(
-                                  width: 12,
-                                ),
-
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment
-                                            .start,
-                                    children: [
-                                      Text(
-                                        transaction
-                                            .description,
-                                      ),
-
-                                      const SizedBox(
-                                        height: 4,
-                                      ),
-
-                                      Text(
-                                        '${transaction.category} • '
-                                        '${transaction.payment}',
-                                        style:
-                                            const TextStyle(
-                                          color:
-                                              Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                Text(
-                                  '${transaction.isIncome ? '+' : '-'}'
-                                  'Rp ${formatMoney(transaction.amount)}',
-                                ),
-                              ],
-                            ),
-                          ),
+                      confirmDismiss: (_) async {
+                        return await onDeleteTransaction(
+                          transaction,
                         );
                       },
-                    ),
+
+                      background: Container(
+                        margin: const EdgeInsets.only(
+                          bottom: 10,
+                        ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(
+                          right: 20,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius:
+                              BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      child: _TransactionCard(
+                        transaction: transaction,
+                        onTap: () async {
+                          final deleted =
+                              await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  TransactionDetailPage(
+                                transaction: transaction,
+                              ),
+                            ),
+                          );
+
+                          if (deleted == true) {
+                            await deleteTransactionAfterDetail(
+                              context,
+                              transaction,
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> deleteTransactionAfterDetail(
+    BuildContext context,
+    Transaction transaction,
+  ) async {
+    await onDeleteTransaction(
+      transaction,
     );
   }
 
@@ -610,6 +587,73 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ============================================================
+// TRANSACTION CARD
+// ============================================================
+
+class _TransactionCard extends StatelessWidget {
+  final Transaction transaction;
+  final VoidCallback onTap;
+
+  const _TransactionCard({
+    required this.transaction,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(
+          bottom: 10,
+        ),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xff111111),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              transaction.isIncome
+                  ? Icons.arrow_downward
+                  : Icons.arrow_upward,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction.description,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${transaction.category} • '
+                    '${transaction.payment}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${transaction.isIncome ? '+' : '-'}'
+              'Rp ${formatMoney(transaction.amount)}',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
