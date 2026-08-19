@@ -22,7 +22,7 @@ class Transaction {
   final String category;
   final DateTime createdAt;
 
-  Transaction({
+  const Transaction({
     this.id,
     required this.description,
     required this.amount,
@@ -57,15 +57,17 @@ class _RDTFinanceState extends State<RDTFinance> {
   }
 
   // ==========================================================
-  // LOAD DATABASE
+  // LOAD TRANSACTIONS
   // ==========================================================
 
   Future<void> loadTransactions() async {
     try {
-      final data = await DatabaseHelper.instance.getTransactions();
+      final data =
+          await DatabaseHelper.instance.getTransactions();
 
       debugPrint(
-        'RDTFINANCE DATABASE: ${data.length} transaksi ditemukan',
+        'RDTFINANCE DATABASE: '
+        '${data.length} transaksi ditemukan',
       );
 
       final loadedTransactions = data.map((item) {
@@ -74,7 +76,7 @@ class _RDTFinanceState extends State<RDTFinance> {
           description: item['description'] as String,
           amount: (item['amount'] as num).toDouble(),
           isIncome: item['isIncome'] == 1,
-          payment: item['payment'] as String,
+          payment: item['payment'] as String? ?? 'Unknown',
           category: item['category'] as String? ?? 'Other',
           createdAt: DateTime.parse(
             item['createdAt'] as String,
@@ -122,7 +124,8 @@ class _RDTFinanceState extends State<RDTFinance> {
       );
 
       debugPrint(
-        'RDTFINANCE DATABASE: transaksi tersimpan ID $id',
+        'RDTFINANCE DATABASE: '
+        'transaksi tersimpan ID $id',
       );
 
       if (!mounted) return;
@@ -153,9 +156,7 @@ class _RDTFinanceState extends State<RDTFinance> {
   // DELETE TRANSACTION
   // ==========================================================
 
-  Future<void> deleteTransaction(
-    int id,
-  ) async {
+  Future<void> deleteTransaction(int id) async {
     try {
       await DatabaseHelper.instance.deleteTransaction(id);
 
@@ -168,7 +169,8 @@ class _RDTFinanceState extends State<RDTFinance> {
       });
 
       debugPrint(
-        'RDTFINANCE DATABASE: transaksi ID $id dihapus',
+        'RDTFINANCE DATABASE: '
+        'transaksi ID $id dihapus',
       );
     } catch (e) {
       debugPrint(
@@ -178,7 +180,7 @@ class _RDTFinanceState extends State<RDTFinance> {
   }
 
   // ==========================================================
-  // BUILD APP
+  // BUILD
   // ==========================================================
 
   @override
@@ -200,30 +202,29 @@ class _RDTFinanceState extends State<RDTFinance> {
         transactions: transactions,
         onTransactionDeleted: deleteTransaction,
       ),
-
       ChatPage(
         onTransactionAdded: addTransaction,
       ),
-
       StatsPage(
         transactions: transactions,
       ),
-
       const ProfilePage(),
     ];
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'RDTFINANCE',
-
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
       ),
-
       home: Scaffold(
         body: pages[currentIndex],
+
+        // ====================================================
+        // BOTTOM NAVIGATION
+        // ====================================================
 
         bottomNavigationBar: BottomNavigationBar(
           backgroundColor: Colors.black,
@@ -298,7 +299,6 @@ class HomePage extends StatelessWidget {
 
       appBar: AppBar(
         backgroundColor: Colors.black,
-
         title: const Text(
           'RDTFINANCE',
           style: TextStyle(
@@ -337,7 +337,6 @@ class HomePage extends StatelessWidget {
                   children: [
                     const Text(
                       'Balance',
-
                       style: TextStyle(
                         color: Colors.grey,
                       ),
@@ -347,7 +346,6 @@ class HomePage extends StatelessWidget {
 
                     Text(
                       'Rp ${formatMoney(balance)}',
-
                       style: const TextStyle(
                         fontSize: 30,
                         fontWeight:
@@ -362,14 +360,13 @@ class HomePage extends StatelessWidget {
                           MainAxisAlignment.spaceBetween,
 
                       children: [
-                        summaryItem(
-                          'Income',
-                          income,
+                        SummaryItem(
+                          title: 'Income',
+                          amount: income,
                         ),
-
-                        summaryItem(
-                          'Expense',
-                          expense,
+                        SummaryItem(
+                          title: 'Expense',
+                          amount: expense,
                         ),
                       ],
                     ),
@@ -385,7 +382,6 @@ class HomePage extends StatelessWidget {
 
               const Text(
                 'Cashflow',
-
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight:
@@ -418,7 +414,6 @@ class HomePage extends StatelessWidget {
 
               const Text(
                 'Recent Transactions',
-
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight:
@@ -431,7 +426,6 @@ class HomePage extends StatelessWidget {
               if (transactions.isEmpty)
                 const Text(
                   'Belum ada transaksi.',
-
                   style: TextStyle(
                     color: Colors.grey,
                   ),
@@ -449,10 +443,8 @@ class HomePage extends StatelessWidget {
                         }
 
                         final deleted =
-                            await Navigator.push<
-                                bool>(
+                            await Navigator.push<bool>(
                           context,
-
                           MaterialPageRoute(
                             builder: (_) =>
                                 TransactionDetailPage(
@@ -469,84 +461,8 @@ class HomePage extends StatelessWidget {
                         }
                       },
 
-                      child: Container(
-                        margin:
-                            const EdgeInsets.only(
-                          bottom: 10,
-                        ),
-
-                        padding:
-                            const EdgeInsets.all(
-                          16,
-                        ),
-
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              const Color(
-                            0xff111111,
-                          ),
-
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
-                        ),
-
-                        child: Row(
-                          children: [
-                            Icon(
-                              transaction.isIncome
-                                  ? Icons
-                                      .arrow_downward
-                                  : Icons
-                                      .arrow_upward,
-
-                              color:
-                                  Colors.white,
-                            ),
-
-                            const SizedBox(
-                              width: 12,
-                            ),
-
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
-
-                                children: [
-                                  Text(
-                                    transaction
-                                        .description,
-                                  ),
-
-                                  const SizedBox(
-                                    height: 4,
-                                  ),
-
-                                  Text(
-                                    '${transaction.category} • '
-                                    '${transaction.payment}',
-
-                                    style:
-                                        const TextStyle(
-                                      color:
-                                          Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            Text(
-                              '${transaction.isIncome ? '+' : '-'}'
-                              'Rp ${formatMoney(transaction.amount)}',
-                            ),
-                          ],
-                        ),
+                      child: TransactionCard(
+                        transaction: transaction,
                       ),
                     );
                   },
@@ -557,15 +473,24 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+}
 
-  // ==========================================================
-  // SUMMARY
-  // ==========================================================
+// ============================================================
+// SUMMARY ITEM
+// ============================================================
 
-  Widget summaryItem(
-    String title,
-    double amount,
-  ) {
+class SummaryItem extends StatelessWidget {
+  final String title;
+  final double amount;
+
+  const SummaryItem({
+    super.key,
+    required this.title,
+    required this.amount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment:
           CrossAxisAlignment.start,
@@ -573,7 +498,6 @@ class HomePage extends StatelessWidget {
       children: [
         Text(
           title,
-
           style: const TextStyle(
             color: Colors.grey,
           ),
@@ -583,7 +507,6 @@ class HomePage extends StatelessWidget {
 
         Text(
           'Rp ${formatMoney(amount)}',
-
           style: const TextStyle(
             fontSize: 16,
           ),
@@ -594,99 +517,58 @@ class HomePage extends StatelessWidget {
 }
 
 // ============================================================
-// STATS PAGE
+// TRANSACTION CARD
 // ============================================================
 
-class StatsPage extends StatelessWidget {
-  final List<Transaction> transactions;
+class TransactionCard extends StatelessWidget {
+  final Transaction transaction;
 
-  const StatsPage({
+  const TransactionCard({
     super.key,
-    required this.transactions,
+    required this.transaction,
   });
 
   @override
   Widget build(BuildContext context) {
-    double income = 0;
-    double expense = 0;
-
-    for (final transaction in transactions) {
-      if (transaction.isIncome) {
-        income += transaction.amount;
-      } else {
-        expense += transaction.amount;
-      }
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Statistics'),
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-
-        child: Column(
-          children: [
-            statCard(
-              'Total Income',
-              income,
-            ),
-
-            const SizedBox(height: 12),
-
-            statCard(
-              'Total Expense',
-              expense,
-            ),
-
-            const SizedBox(height: 12),
-
-            statCard(
-              'Net Balance',
-              income - expense,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget statCard(
-    String title,
-    double amount,
-  ) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      margin:
+          const EdgeInsets.only(bottom: 10),
+
+      padding:
+          const EdgeInsets.all(16),
 
       decoration: BoxDecoration(
         color: const Color(0xff111111),
         borderRadius:
-            BorderRadius.circular(18),
+            BorderRadius.circular(16),
       ),
 
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
+      child: Row(
         children: [
-          Text(
-            title,
+          Icon(
+            transaction.isIncome
+                ? Icons.arrow_downward
+                : Icons.arrow_upward,
 
-            style: const TextStyle(
-              color: Colors.grey,
-            ),
+            color: Colors.white,
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(width: 12),
 
-          Text(
-            'Rp ${formatMoney(amount)}',
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
 
-            style: const TextStyle(
-              fontSize: 24,
-              font
+              children: [
+                Text(
+                  transaction.description,
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  '${transaction.category} • '
+                  '${transaction.payment}',
+
+                  style: const TextStyle(
