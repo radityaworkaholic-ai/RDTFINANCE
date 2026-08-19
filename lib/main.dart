@@ -56,7 +56,7 @@ class _RDTFinanceState extends State<RDTFinance> {
   }
 
   // ==========================================================
-  // LOAD DATABASE
+  // LOAD TRANSACTIONS
   // ==========================================================
 
   Future<void> loadTransactions() async {
@@ -73,7 +73,7 @@ class _RDTFinanceState extends State<RDTFinance> {
           description: item['description'] as String,
           amount: (item['amount'] as num).toDouble(),
           isIncome: item['isIncome'] == 1,
-          payment: item['payment'] as String? ?? 'Unknown',
+          payment: item['payment'] as String,
           category: item['category'] as String? ?? 'Other',
           createdAt: DateTime.parse(
             item['createdAt'] as String,
@@ -91,9 +91,7 @@ class _RDTFinanceState extends State<RDTFinance> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint(
-        'RDTFINANCE DATABASE ERROR: $e',
-      );
+      debugPrint('RDTFINANCE DATABASE ERROR: $e');
 
       if (!mounted) return;
 
@@ -107,9 +105,7 @@ class _RDTFinanceState extends State<RDTFinance> {
   // ADD TRANSACTION
   // ==========================================================
 
-  Future<void> addTransaction(
-    Transaction transaction,
-  ) async {
+  Future<void> addTransaction(Transaction transaction) async {
     try {
       final id = await DatabaseHelper.instance.insertTransaction(
         description: transaction.description,
@@ -148,7 +144,110 @@ class _RDTFinanceState extends State<RDTFinance> {
   }
 
   // ==========================================================
-  // BUILD
+  // DELETE TRANSACTION
+  // ==========================================================
+
+  Future<void> deleteTransaction(Transaction transaction) async {
+    if (transaction.id == null) {
+      return;
+    }
+
+    try {
+      final deletedRows =
+          await DatabaseHelper.instance.deleteTransaction(
+        transaction.id!,
+      );
+
+      debugPrint(
+        'RDTFINANCE DATABASE: '
+        '$deletedRows transaksi dihapus '
+        'ID ${transaction.id}',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        transactions.removeWhere(
+          (item) => item.id == transaction.id,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Transaksi berhasil dihapus'),
+        ),
+      );
+    } catch (e) {
+      debugPrint(
+        'RDTFINANCE DATABASE DELETE ERROR: $e',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal menghapus transaksi: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  // ==========================================================
+  // CONFIRM DELETE
+  // ==========================================================
+
+  Future<void> confirmDelete(
+    Transaction transaction,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff111111),
+          title: const Text(
+            'Hapus transaksi?',
+          ),
+          content: Text(
+            'Transaksi "${transaction.description}" '
+            'akan dihapus permanen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text(
+                'Hapus',
+                style: TextStyle(
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await deleteTransaction(transaction);
+    }
+  }
+
+  // ==========================================================
+  // BUILD APP
   // ==========================================================
 
   @override
@@ -168,6 +267,7 @@ class _RDTFinanceState extends State<RDTFinance> {
     final pages = [
       HomePage(
         transactions: transactions,
+        onDeleteTransaction: confirmDelete,
       ),
       ChatPage(
         onTransactionAdded: addTransaction,
@@ -185,9 +285,6 @@ class _RDTFinanceState extends State<RDTFinance> {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
-        colorScheme: const ColorScheme.dark(
-          surface: Colors.black,
-        ),
       ),
       home: Scaffold(
         body: pages[currentIndex],
@@ -232,10 +329,12 @@ class _RDTFinanceState extends State<RDTFinance> {
 
 class HomePage extends StatelessWidget {
   final List<Transaction> transactions;
+  final Future<void> Function(Transaction) onDeleteTransaction;
 
   const HomePage({
     super.key,
     required this.transactions,
+    required this.onDeleteTransaction,
   });
 
   @override
@@ -257,7 +356,6 @@ class HomePage extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
         title: const Text(
           'RDTFINANCE',
           style: TextStyle(
@@ -289,7 +387,6 @@ class HomePage extends StatelessWidget {
                       'Balance',
                       style: TextStyle(
                         color: Colors.grey,
-                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -305,11 +402,11 @@ class HomePage extends StatelessWidget {
                       mainAxisAlignment:
                           MainAxisAlignment.spaceBetween,
                       children: [
-                        _summaryItem(
+                        summaryItem(
                           'Income',
                           income,
                         ),
-                        _summaryItem(
+                        summaryItem(
                           'Expense',
                           expense,
                         ),
@@ -374,8 +471,113 @@ class HomePage extends StatelessWidget {
                     .take(5)
                     .map(
                       (transaction) {
-                        return _transactionCard(
-                          transaction,
+                        return Dismissible(
+                          key: ValueKey(
+                            transaction.id,
+                          ),
+
+                          direction:
+                              DismissDirection.endToStart,
+
+                          confirmDismiss: (_) async {
+                            await onDeleteTransaction(
+                              transaction,
+                            );
+
+                            return false;
+                          },
+
+                          background: Container(
+                            margin:
+                                const EdgeInsets.only(
+                              bottom: 10,
+                            ),
+                            alignment:
+                                Alignment.centerRight,
+                            padding:
+                                const EdgeInsets.only(
+                              right: 20,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius:
+                                  BorderRadius.circular(
+                                16,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
+                          ),
+
+                          child: Container(
+                            margin:
+                                const EdgeInsets.only(
+                              bottom: 10,
+                            ),
+                            padding:
+                                const EdgeInsets.all(16),
+                            decoration:
+                                BoxDecoration(
+                              color:
+                                  const Color(0xff111111),
+                              borderRadius:
+                                  BorderRadius.circular(
+                                16,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  transaction.isIncome
+                                      ? Icons
+                                          .arrow_downward
+                                      : Icons
+                                          .arrow_upward,
+                                  color: Colors.white,
+                                ),
+
+                                const SizedBox(
+                                  width: 12,
+                                ),
+
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment
+                                            .start,
+                                    children: [
+                                      Text(
+                                        transaction
+                                            .description,
+                                      ),
+
+                                      const SizedBox(
+                                        height: 4,
+                                      ),
+
+                                      Text(
+                                        '${transaction.category} • '
+                                        '${transaction.payment}',
+                                        style:
+                                            const TextStyle(
+                                          color:
+                                              Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                Text(
+                                  '${transaction.isIncome ? '+' : '-'}'
+                                  'Rp ${formatMoney(transaction.amount)}',
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -386,22 +588,18 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ==========================================================
-  // SUMMARY ITEM
-  // ==========================================================
-
-  Widget _summaryItem(
+  Widget summaryItem(
     String title,
     double amount,
   ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: const TextStyle(
             color: Colors.grey,
-            fontSize: 13,
           ),
         ),
         const SizedBox(height: 4),
@@ -409,91 +607,9 @@ class HomePage extends StatelessWidget {
           'Rp ${formatMoney(amount)}',
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w500,
           ),
         ),
       ],
-    );
-  }
-
-  // ==========================================================
-  // TRANSACTION CARD
-  // ==========================================================
-
-  Widget _transactionCard(
-    Transaction transaction,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(
-        bottom: 10,
-      ),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xff111111),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              transaction.isIncome
-                  ? Icons.arrow_downward
-                  : Icons.arrow_upward,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  '${transaction.category} • '
-                  '${transaction.payment}',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          Text(
-            '${transaction.isIncome ? '+' : '-'}'
-            'Rp ${formatMoney(transaction.amount)}',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: transaction.isIncome
-                  ? Colors.white
-                  : Colors.white,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -523,48 +639,29 @@ class StatsPage extends StatelessWidget {
       }
     }
 
-    final balance = income - expense;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
-        title: const Text(
-          'Statistics',
-        ),
+        title: const Text('Statistics'),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _statCard(
-              title: 'Total Income',
-              amount: income,
-              icon: Icons.trending_up,
+            statCard(
+              'Total Income',
+              income,
             ),
-
             const SizedBox(height: 12),
-
-            _statCard(
-              title: 'Total Expense',
-              amount: expense,
-              icon: Icons.trending_down,
+            statCard(
+              'Total Expense',
+              expense,
             ),
-
             const SizedBox(height: 12),
-
-            _statCard(
-              title: 'Net Balance',
-              amount: balance,
-              icon: Icons.account_balance_wallet,
-            ),
-
-            const SizedBox(height: 24),
-
-            _categorySummary(
-              income: income,
-              expense: expense,
+            statCard(
+              'Net Balance',
+              income - expense,
             ),
           ],
         ),
@@ -572,110 +669,10 @@ class StatsPage extends StatelessWidget {
     );
   }
 
-  // ==========================================================
-  // STAT CARD
-  // ==========================================================
-
-  Widget _statCard({
-    required String title,
-    required double amount,
-    required IconData icon,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xff111111),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                Text(
-                  'Rp ${formatMoney(amount)}',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================================
-  // CATEGORY SUMMARY
-  // ==========================================================
-
-  Widget _categorySummary({
-    required double income,
-    required double expense,
-  }) {
-    final Map<String, double> categories = {};
-
-    for (final transaction in transactions) {
-      if (!transaction.isIncome) {
-        categories[transaction.category] =
-            (categories[transaction.category] ?? 0) +
-                transaction.amount;
-      }
-    }
-
-    if (categories.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xff111111),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Text(
-          'Belum ada data pengeluaran.',
-          style: TextStyle(
-            color: Colors.grey,
-          ),
-        ),
-      );
-    }
-
-    final sortedCategories =
-        categories.entries.toList()
-          ..sort(
-            (a, b) => b.value.compareTo(a.value),
-          );
-
+  Widget statCard(
+    String title,
+    double amount,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -687,70 +684,19 @@ class StatsPage extends StatelessWidget {
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Expense by Category',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.grey,
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          ...sortedCategories.map(
-            (entry) {
-              final percentage =
-                  expense > 0
-                      ? entry.value / expense
-                      : 0.0;
-
-              return Padding(
-                padding:
-                    const EdgeInsets.only(
-                  bottom: 14,
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            entry.key,
-                          ),
-                        ),
-                        Text(
-                          'Rp ${formatMoney(entry.value)}',
-                          style:
-                              const TextStyle(
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(
-                        10,
-                      ),
-                      child: LinearProgressIndicator(
-                        value: percentage,
-                        minHeight: 5,
-                        backgroundColor:
-                            Colors.black,
-                        valueColor:
-                            const AlwaysStoppedAnimation<
-                                Color>(
-                          Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          const SizedBox(height: 8),
+          Text(
+            'Rp ${formatMoney(amount)}',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -773,125 +719,16 @@ class ProfilePage extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
-        title: const Text(
-          'Profile',
-        ),
+        title: const Text('Profile'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xff111111),
-                borderRadius:
-                    BorderRadius.circular(22),
-              ),
-              child: const Column(
-                children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.black,
-                    child: Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 35,
-                    ),
-                  ),
-
-                  SizedBox(height: 14),
-
-                  Text(
-                    'Mr. Raditya',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
-
-                  SizedBox(height: 5),
-
-                  Text(
-                    'RDTFINANCE',
-                    style: TextStyle(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            _profileItem(
-              icon: Icons.account_balance_wallet,
-              title: 'Finance',
-              subtitle:
-                  'Personal finance tracking',
-            ),
-
-            const SizedBox(height: 10),
-
-            _profileItem(
-              icon: Icons.storage,
-              title: 'Local Database',
-              subtitle:
-                  'Data tersimpan di perangkat',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _profileItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xff111111),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: Colors.white,
+      body: const Center(
+        child: Text(
+          'RDTFINANCE',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -902,10 +739,7 @@ class ProfilePage extends StatelessWidget {
 // ============================================================
 
 String formatMoney(double amount) {
-  return amount
-      .round()
-      .toString()
-      .replaceAllMapped(
+  return amount.round().toString().replaceAllMapped(
         RegExp(r'\B(?=(\d{3})+(?!\d))'),
         (match) => '.',
       );
