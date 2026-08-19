@@ -57,16 +57,12 @@ class _RDTFinanceState extends State<RDTFinance> {
   }
 
   // ==========================================================
-  // LOAD TRANSACTIONS
+  // LOAD DATABASE
   // ==========================================================
 
   Future<void> loadTransactions() async {
     try {
       final data = await DatabaseHelper.instance.getTransactions();
-
-      debugPrint(
-        'RDTFINANCE DATABASE: ${data.length} transaksi ditemukan',
-      );
 
       final loadedTransactions = data.map((item) {
         return Transaction(
@@ -91,9 +87,13 @@ class _RDTFinanceState extends State<RDTFinance> {
 
         isLoading = false;
       });
+
+      debugPrint(
+        'RDTFINANCE: ${transactions.length} transaksi dimuat',
+      );
     } catch (e) {
       debugPrint(
-        'RDTFINANCE DATABASE ERROR: $e',
+        'RDTFINANCE LOAD ERROR: $e',
       );
 
       if (!mounted) return;
@@ -111,90 +111,78 @@ class _RDTFinanceState extends State<RDTFinance> {
   Future<void> addTransaction(
     Transaction transaction,
   ) async {
-    try {
-      final id = await DatabaseHelper.instance.insertTransaction(
-        description: transaction.description,
-        amount: transaction.amount,
-        isIncome: transaction.isIncome,
-        payment: transaction.payment,
-        category: transaction.category,
-      );
+    final id = await DatabaseHelper.instance.insertTransaction(
+      description: transaction.description,
+      amount: transaction.amount,
+      isIncome: transaction.isIncome,
+      payment: transaction.payment,
+      category: transaction.category,
+    );
 
-      debugPrint(
-        'RDTFINANCE DATABASE: transaksi tersimpan ID $id',
-      );
+    final savedTransaction = Transaction(
+      id: id,
+      description: transaction.description,
+      amount: transaction.amount,
+      isIncome: transaction.isIncome,
+      payment: transaction.payment,
+      category: transaction.category,
+      createdAt: transaction.createdAt,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      final savedTransaction = Transaction(
-        id: id,
-        description: transaction.description,
-        amount: transaction.amount,
-        isIncome: transaction.isIncome,
-        payment: transaction.payment,
-        category: transaction.category,
-        createdAt: transaction.createdAt,
-      );
+    setState(() {
+      transactions.add(savedTransaction);
+    });
 
-      setState(() {
-        transactions.add(savedTransaction);
-      });
-    } catch (e) {
-      debugPrint(
-        'RDTFINANCE DATABASE INSERT ERROR: $e',
-      );
-
-      rethrow;
-    }
+    debugPrint(
+      'RDTFINANCE: transaksi tersimpan ID $id',
+    );
   }
 
   // ==========================================================
   // DELETE TRANSACTION
   // ==========================================================
 
-  Future<void> deleteTransaction(
+  Future<bool> deleteTransaction(
     Transaction transaction,
   ) async {
-    if (transaction.id == null) {
-      debugPrint(
-        'RDTFINANCE DELETE: transaction ID null',
-      );
-      return;
+    final id = transaction.id;
+
+    if (id == null) {
+      return false;
     }
 
     try {
       final deletedRows =
-          await DatabaseHelper.instance.deleteTransaction(
-        transaction.id!,
-      );
+          await DatabaseHelper.instance.deleteTransaction(id);
 
-      debugPrint(
-        'RDTFINANCE DATABASE: '
-        '$deletedRows row dihapus '
-        'untuk ID ${transaction.id}',
-      );
+      if (deletedRows == 0) {
+        debugPrint(
+          'RDTFINANCE: transaksi ID $id tidak ditemukan',
+        );
+        return false;
+      }
 
-      if (!mounted) return;
+      if (!mounted) return true;
 
       setState(() {
         transactions.removeWhere(
-          (item) => item.id == transaction.id,
+          (item) => item.id == id,
         );
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Transaksi berhasil dihapus',
-          ),
-        ),
-      );
-    } catch (e) {
       debugPrint(
-        'RDTFINANCE DATABASE DELETE ERROR: $e',
+        'RDTFINANCE: transaksi ID $id berhasil dihapus',
       );
 
-      if (!mounted) return;
+      return true;
+    } catch (e) {
+      debugPrint(
+        'RDTFINANCE DELETE ERROR: $e',
+      );
+
+      if (!mounted) return false;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -203,6 +191,29 @@ class _RDTFinanceState extends State<RDTFinance> {
           ),
         ),
       );
+
+      return false;
+    }
+  }
+
+  // ==========================================================
+  // OPEN TRANSACTION DETAIL
+  // ==========================================================
+
+  Future<void> openTransactionDetail(
+    Transaction transaction,
+  ) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TransactionDetailPage(
+          transaction: transaction,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await deleteTransaction(transaction);
     }
   }
 
@@ -263,9 +274,7 @@ class _RDTFinanceState extends State<RDTFinance> {
       return false;
     }
 
-    await deleteTransaction(transaction);
-
-    return true;
+    return await deleteTransaction(transaction);
   }
 
   // ==========================================================
@@ -275,9 +284,10 @@ class _RDTFinanceState extends State<RDTFinance> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const MaterialApp(
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
+        theme: ThemeData.dark(),
+        home: const Scaffold(
           backgroundColor: Colors.black,
           body: Center(
             child: CircularProgressIndicator(),
@@ -289,6 +299,7 @@ class _RDTFinanceState extends State<RDTFinance> {
     final pages = [
       HomePage(
         transactions: transactions,
+        onTransactionTap: openTransactionDetail,
         onDeleteTransaction: confirmDelete,
       ),
       ChatPage(
@@ -307,7 +318,9 @@ class _RDTFinanceState extends State<RDTFinance> {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
-        useMaterial3: true,
+        colorScheme: const ColorScheme.dark(
+          surface: Colors.black,
+        ),
       ),
       home: Scaffold(
         backgroundColor: Colors.black,
@@ -353,11 +366,15 @@ class _RDTFinanceState extends State<RDTFinance> {
 
 class HomePage extends StatelessWidget {
   final List<Transaction> transactions;
+
+  final Future<void> Function(Transaction) onTransactionTap;
+
   final Future<bool> Function(Transaction) onDeleteTransaction;
 
   const HomePage({
     super.key,
     required this.transactions,
+    required this.onTransactionTap,
     required this.onDeleteTransaction,
   });
 
@@ -393,9 +410,9 @@ class HomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // =================================================
+              // ==================================================
               // BALANCE
-              // =================================================
+              // ==================================================
 
               Container(
                 width: double.infinity,
@@ -405,8 +422,7 @@ class HomePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Balance',
@@ -443,9 +459,9 @@ class HomePage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // =================================================
+              // ==================================================
               // CASHFLOW
-              // =================================================
+              // ==================================================
 
               const Text(
                 'Cashflow',
@@ -470,9 +486,9 @@ class HomePage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // =================================================
+              // ==================================================
               // RECENT TRANSACTIONS
-              // =================================================
+              // ==================================================
 
               const Text(
                 'Recent Transactions',
@@ -495,9 +511,14 @@ class HomePage extends StatelessWidget {
                 ...transactions.reversed.take(5).map(
                   (transaction) {
                     return Dismissible(
-                      key: ValueKey(transaction.id),
-                      direction:
-                          DismissDirection.endToStart,
+                      key: ValueKey(
+                        'transaction_${transaction.id}',
+                      ),
+                      direction: DismissDirection.endToStart,
+
+                      // ==================================================
+                      // SWIPE LEFT
+                      // ==================================================
 
                       confirmDismiss: (_) async {
                         return await onDeleteTransaction(
@@ -524,27 +545,72 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
 
-                      child: _TransactionCard(
-                        transaction: transaction,
-                        onTap: () async {
-                          final deleted =
-                              await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  TransactionDetailPage(
-                                transaction: transaction,
-                              ),
-                            ),
+                      child: GestureDetector(
+                        onTap: () {
+                          onTransactionTap(
+                            transaction,
                           );
-
-                          if (deleted == true) {
-                            await deleteTransactionAfterDetail(
-                              context,
-                              transaction,
-                            );
-                          }
                         },
+                        child: Container(
+                          margin: const EdgeInsets.only(
+                            bottom: 10,
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff111111),
+                            borderRadius:
+                                BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                transaction.isIncome
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: Colors.white,
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      transaction.description,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${transaction.category} • '
+                                      '${transaction.payment}',
+                                      style:
+                                          const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(width: 8),
+
+                              Text(
+                                '${transaction.isIncome ? '+' : '-'}'
+                                'Rp ${formatMoney(transaction.amount)}',
+                                style: TextStyle(
+                                  fontWeight:
+                                      FontWeight.w500,
+                                  color:
+                                      transaction.isIncome
+                                          ? Colors.white
+                                          : Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -556,22 +622,12 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Future<void> deleteTransactionAfterDetail(
-    BuildContext context,
-    Transaction transaction,
-  ) async {
-    await onDeleteTransaction(
-      transaction,
-    );
-  }
-
   Widget summaryItem(
     String title,
     double amount,
   ) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
@@ -587,73 +643,6 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ============================================================
-// TRANSACTION CARD
-// ============================================================
-
-class _TransactionCard extends StatelessWidget {
-  final Transaction transaction;
-  final VoidCallback onTap;
-
-  const _TransactionCard({
-    required this.transaction,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(
-          bottom: 10,
-        ),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xff111111),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              transaction.isIncome
-                  ? Icons.arrow_downward
-                  : Icons.arrow_upward,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    transaction.description,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${transaction.category} • '
-                    '${transaction.payment}',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${transaction.isIncome ? '+' : '-'}'
-              'Rp ${formatMoney(transaction.amount)}',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
