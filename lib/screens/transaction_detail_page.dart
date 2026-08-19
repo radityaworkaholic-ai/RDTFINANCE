@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../database/database_helper.dart';
 import '../main.dart';
 
 class TransactionDetailPage extends StatelessWidget {
@@ -11,14 +10,70 @@ class TransactionDetailPage extends StatelessWidget {
     required this.transaction,
   });
 
-  Future<void> deleteTransaction(BuildContext context) async {
-    if (transaction.id == null) {
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  Future<void> requestDelete(
+    BuildContext context,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff111111),
+          title: const Text(
+            'Hapus transaksi?',
+          ),
+          content: Text(
+            'Transaksi "${transaction.description}" '
+            'akan dihapus permanen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
+              },
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
+              },
+              child: const Text(
+                'Hapus',
+                style: TextStyle(
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
       return;
     }
 
-    await DatabaseHelper.instance.deleteTransaction(
-      transaction.id!,
-    );
+    // ========================================================
+    // PENTING:
+    // Detail page TIDAK menghapus SQLite langsung.
+    //
+    // Detail hanya mengembalikan TRUE.
+    // main.dart yang menangani delete database + UI.
+    // ========================================================
 
     if (!context.mounted) return;
 
@@ -27,6 +82,10 @@ class TransactionDetailPage extends StatelessWidget {
       true,
     );
   }
+
+  // ==========================================================
+  // BUILD
+  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -43,34 +102,33 @@ class TransactionDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Transaction'),
+        title: const Text(
+          'Transaction',
+        ),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
-
         child: Column(
           crossAxisAlignment:
               CrossAxisAlignment.start,
-
           children: [
+            // =================================================
+            // TRANSACTION INFORMATION
+            // =================================================
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
-
               decoration: BoxDecoration(
                 color: const Color(0xff111111),
                 borderRadius:
                     BorderRadius.circular(24),
               ),
-
               child: Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
-
                 children: [
                   Text(
                     transaction.isIncome
@@ -87,11 +145,9 @@ class TransactionDetailPage extends StatelessWidget {
                   Text(
                     '${transaction.isIncome ? '+' : '-'}'
                     'Rp ${formatMoney(transaction.amount)}',
-
                     style: const TextStyle(
                       fontSize: 32,
-                      fontWeight:
-                          FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
 
@@ -127,37 +183,31 @@ class TransactionDetailPage extends StatelessWidget {
 
             const Spacer(),
 
+            // =================================================
+            // DELETE BUTTON
+            // =================================================
+
             SizedBox(
               width: double.infinity,
               height: 52,
-
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showDeleteConfirmation(
-                    context,
-                  );
+                  requestDelete(context);
                 },
-
                 icon: const Icon(
                   Icons.delete_outline,
                 ),
-
                 label: const Text(
                   'Delete Transaction',
                 ),
-
-                style:
-                    ElevatedButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   backgroundColor:
                       Colors.red.shade900,
-                  foregroundColor:
-                      Colors.white,
+                  foregroundColor: Colors.white,
                   shape:
                       RoundedRectangleBorder(
                     borderRadius:
-                        BorderRadius.circular(
-                      14,
-                    ),
+                        BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -168,22 +218,24 @@ class TransactionDetailPage extends StatelessWidget {
     );
   }
 
+  // ==========================================================
+  // DETAIL ROW
+  // ==========================================================
+
   Widget detailRow(
     String title,
     String value,
   ) {
     return Padding(
-      padding:
-          const EdgeInsets.only(bottom: 16),
-
+      padding: const EdgeInsets.only(
+        bottom: 16,
+      ),
       child: Row(
         crossAxisAlignment:
             CrossAxisAlignment.start,
-
         children: [
           SizedBox(
             width: 90,
-
             child: Text(
               title,
               style: const TextStyle(
@@ -191,7 +243,6 @@ class TransactionDetailPage extends StatelessWidget {
               ),
             ),
           ),
-
           Expanded(
             child: Text(
               value,
@@ -200,63 +251,6 @@ class TransactionDetailPage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void showDeleteConfirmation(
-    BuildContext context,
-  ) {
-    showDialog(
-      context: context,
-
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor:
-              const Color(0xff111111),
-
-          title: const Text(
-            'Hapus transaksi?',
-          ),
-
-          content: const Text(
-            'Transaksi ini akan dihapus '
-            'secara permanen.',
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-
-              child: const Text(
-                'Batal',
-              ),
-            ),
-
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(
-                  dialogContext,
-                );
-
-                await deleteTransaction(
-                  context,
-                );
-              },
-
-              child: const Text(
-                'Hapus',
-                style: TextStyle(
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
