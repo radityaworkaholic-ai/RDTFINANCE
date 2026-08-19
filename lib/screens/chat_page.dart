@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 
 class ChatPage extends StatefulWidget {
-  final Function(Transaction) onTransactionAdded;
+  final Future<void> Function(Transaction) onTransactionAdded;
 
   const ChatPage({
     super.key,
@@ -16,10 +16,12 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController controller = TextEditingController();
 
-  void sendTransaction() {
+  bool isSending = false;
+
+  Future<void> sendTransaction() async {
     final text = controller.text.trim();
 
-    if (text.isEmpty) {
+    if (text.isEmpty || isSending) {
       return;
     }
 
@@ -29,21 +31,36 @@ class _ChatPageState extends State<ChatPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Format belum dikenali. Contoh: Makan sushi 45k BCA',
+            'Format belum dikenali.\nContoh: Makan sushi 45k BCA',
           ),
         ),
       );
       return;
     }
 
-    widget.onTransactionAdded(transaction);
-    controller.clear();
+    setState(() {
+      isSending = true;
+    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transaksi berhasil ditambahkan'),
-      ),
-    );
+    try {
+      await widget.onTransactionAdded(transaction);
+
+      controller.clear();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Transaksi berhasil disimpan'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSending = false;
+        });
+      }
+    }
   }
 
   Transaction? parseTransaction(String text) {
@@ -68,6 +85,10 @@ class _ChatPageState extends State<ChatPage> {
       amount *= 1000;
     } else if (unit == 'jt' || unit == 'juta') {
       amount *= 1000000;
+    }
+
+    if (amount <= 0) {
+      return null;
     }
 
     final isIncome =
@@ -101,6 +122,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
@@ -122,12 +149,14 @@ class _ChatPageState extends State<ChatPage> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Text(
-                    'Halo 👋\n\n'
+                    'Halo Mr.Raditya 💸\n\n'
                     'Ketik transaksi seperti:\n'
                     'Makan sushi 45k BCA\n\n'
                     'Atau:\n'
                     'Gaji 5jt BCA',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -138,10 +167,14 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     controller: controller,
                     onSubmitted: (_) => sendTransaction(),
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(
+                      color: Colors.white,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Tulis transaksi...',
-                      hintStyle: const TextStyle(color: Colors.grey),
+                      hintStyle: const TextStyle(
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF111111),
                       border: OutlineInputBorder(
@@ -158,11 +191,22 @@ class _ChatPageState extends State<ChatPage> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: sendTransaction,
-                    icon: const Icon(
-                      Icons.send,
-                      color: Colors.black,
-                    ),
+                    onPressed: isSending
+                        ? null
+                        : sendTransaction,
+                    icon: isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.send,
+                            color: Colors.black,
+                          ),
                   ),
                 ),
               ],
