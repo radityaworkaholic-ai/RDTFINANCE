@@ -1,14 +1,52 @@
-import 'screens/chat_page.dart';
 import 'package:flutter/material.dart';
+import 'screens/chat_page.dart';
 import 'widgets/cashflow_chart.dart';
 
-void main() => runApp(const RDTFinance());
+void main() {
+  runApp(const RDTFinance());
+}
 
-class RDTFinance extends StatelessWidget {
+class Transaction {
+  final String description;
+  final double amount;
+  final bool isIncome;
+  final String payment;
+
+  Transaction({
+    required this.description,
+    required this.amount,
+    required this.isIncome,
+    required this.payment,
+  });
+}
+
+class RDTFinance extends StatefulWidget {
   const RDTFinance({super.key});
 
   @override
+  State<RDTFinance> createState() => _RDTFinanceState();
+}
+
+class _RDTFinanceState extends State<RDTFinance> {
+  int currentIndex = 0;
+
+  final List<Transaction> transactions = [];
+
+  void addTransaction(Transaction transaction) {
+    setState(() {
+      transactions.add(transaction);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final pages = [
+      HomePage(transactions: transactions),
+      ChatPage(onTransactionAdded: addTransaction),
+      StatsPage(transactions: transactions),
+      const ProfilePage(),
+    ];
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'RDTFINANCE',
@@ -17,40 +55,81 @@ class RDTFinance extends StatelessWidget {
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
       ),
-      home: const ChatPage(),
+      home: Scaffold(
+        body: pages[currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: Colors.black,
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.grey,
+          currentIndex: currentIndex,
+          type: BottomNavigationBarType.fixed,
+          onTap: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat),
+              label: 'Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart),
+              label: 'Stats',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final List<Transaction> transactions;
+
+  const HomePage({
+    super.key,
+    required this.transactions,
+  });
 
   @override
   Widget build(BuildContext context) {
+    double income = 0;
+    double expense = 0;
+
+    for (final transaction in transactions) {
+      if (transaction.isIncome) {
+        income += transaction.amount;
+      } else {
+        expense += transaction.amount;
+      }
+    }
+
+    final balance = income - expense;
+
     return Scaffold(
-bottomNavigationBar: BottomNavigationBar(
-  backgroundColor: Colors.black,
-  selectedItemColor: Colors.white,
-  unselectedItemColor: Colors.grey,
-  type: BottomNavigationBarType.fixed,
-  items: const [
-    BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-    BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-    BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Stats"),
-    BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-  ],
-),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          'RDTFINANCE',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("RDTFINANCE",
-                  style: TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -58,73 +137,229 @@ bottomNavigationBar: BottomNavigationBar(
                   color: const Color(0xff111111),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Total Balance",
-                        style: TextStyle(color: Colors.grey)),
-                    SizedBox(height: 8),
-                    Text("Rp 8.450.000",
-                        style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w700)),
-                    SizedBox(height: 18),
+                    const Text(
+                      'Balance',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Rp ${formatMoney(balance)}',
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Text("Income",
-                                style: TextStyle(
-                                    color: Colors.grey)),
-                            Text("Rp12.800.000")
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.end,
-                          children: [
-                            Text("Expense",
-                                style: TextStyle(
-                                    color: Colors.grey)),
-                            Text("Rp4.350.000")
-                          ],
-                        ),
+                        summaryItem('Income', income),
+                        summaryItem('Expense', expense),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 24),
-              const Text("Cashflow",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600)),
+
+              const Text(
+                'Cashflow',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
 
               const SizedBox(height: 12),
 
               Container(
                 height: 180,
                 width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xff111111),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Center(
-                  child: Text(
-                    "const CashflowChart()",
-                    style: TextStyle(color: Colors.white54),
-                  ),
+                child: const CashflowChart(),
+              ),
+
+              const SizedBox(height: 24),
+
+              const Text(
+                'Recent Transactions',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              if (transactions.isEmpty)
+                const Text(
+                  'Belum ada transaksi.',
+                  style: TextStyle(color: Colors.grey),
+                )
+              else
+                ...transactions.reversed.take(5).map(
+                  (transaction) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff111111),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            transaction.isIncome
+                                ? Icons.arrow_downward
+                                : Icons.arrow_upward,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(transaction.description),
+                          ),
+                          Text(
+                            '${transaction.isIncome ? '+' : '-'}Rp ${formatMoney(transaction.amount)}',
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget summaryItem(String title, double amount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Rp ${formatMoney(amount)}',
+          style: const TextStyle(fontSize: 16),
+        ),
+      ],
+    );
+  }
+}
+
+class StatsPage extends StatelessWidget {
+  final List<Transaction> transactions;
+
+  const StatsPage({
+    super.key,
+    required this.transactions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    double income = 0;
+    double expense = 0;
+
+    for (final transaction in transactions) {
+      if (transaction.isIncome) {
+        income += transaction.amount;
+      } else {
+        expense += transaction.amount;
+      }
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text('Statistics'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            statCard('Total Income', income),
+            const SizedBox(height: 12),
+            statCard('Total Expense', expense),
+            const SizedBox(height: 12),
+            statCard('Net Balance', income - expense),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget statCard(String title, double amount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xff111111),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Rp ${formatMoney(amount)}',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text('Profile'),
+      ),
+      body: const Center(
+        child: Text(
+          'RDTFINANCE',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String formatMoney(double amount) {
+  return amount
+      .round()
+      .toString()
+      .replaceAllMapped(
+        RegExp(r'\B(?=(\d{3})+(?!\d))'),
+        (match) => '.',
+      );
 }
