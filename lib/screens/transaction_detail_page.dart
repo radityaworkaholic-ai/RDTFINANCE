@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../database/database_helper.dart';
 import '../main.dart';
 
 class TransactionDetailPage extends StatelessWidget {
@@ -10,289 +10,91 @@ class TransactionDetailPage extends StatelessWidget {
     required this.transaction,
   });
 
-  // ==========================================================
-  // DELETE
-  // ==========================================================
+  Future<void> _delete(BuildContext context) async {
+    if (transaction.id == null) return;
 
-  Future<void> requestDelete(
-    BuildContext context,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor:
-              const Color(0xff151515),
-
-          title: const Text(
-            'Hapus transaksi?',
-          ),
-
-          content: Text(
-            '"${transaction.description}" '
-            'akan dihapus permanen.',
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(false);
-              },
-
-              child: const Text(
-                'Batal',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-
-            TextButton(
-              onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(true);
-              },
-
-              child: const Text(
-                'Hapus',
-
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) {
-      return;
-    }
+    await DatabaseHelper.instance.deleteTransaction(transaction.id!);
 
     if (!context.mounted) return;
 
-    // Kembali ke Home.
-    // main.dart akan reload database.
-    Navigator.of(context).pop(true);
+    Navigator.pop(context, true); // kirim TRUE ke Home
   }
-
-  // ==========================================================
-  // BUILD
-  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
-    final date =
-        transaction.createdAt;
-
-    final dateText =
-        '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
-
-    final timeText =
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
+    final d = transaction.createdAt;
 
     return Scaffold(
       backgroundColor: Colors.black,
-
       appBar: AppBar(
         backgroundColor: Colors.black,
-
-        title: const Text(
-          'Transaction',
-        ),
+        title: const Text('Transaction'),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
-
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
           children: [
-            // ==================================================
-            // DETAIL CARD
-            // ==================================================
-
             Container(
               width: double.infinity,
-
               padding: const EdgeInsets.all(24),
-
               decoration: BoxDecoration(
                 color: const Color(0xff111111),
-                borderRadius:
-                    BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(24),
               ),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    transaction.isIncome
-                        ? 'Income'
-                        : 'Expense',
-
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+                    transaction.description,
+                    style: const TextStyle(fontSize: 22),
                   ),
-
-                  const SizedBox(height: 10),
-
+                  const SizedBox(height: 12),
                   Text(
-                    '${transaction.isIncome ? '+' : '-'}'
-                    'Rp ${formatMoney(transaction.amount)}',
-
+                    "Rp ${formatMoney(transaction.amount)}",
                     style: const TextStyle(
                       fontSize: 30,
-                      fontWeight:
-                          FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-
-                  const SizedBox(height: 28),
-
-                  detailRow(
-                    'Description',
-                    transaction.description,
-                  ),
-
-                  detailRow(
-                    'Category',
-                    transaction.category,
-                  ),
-
-                  detailRow(
-                    'Payment',
-                    transaction.payment,
-                  ),
-
-                  detailRow(
-                    'Date',
-                    dateText,
-                  ),
-
-                  detailRow(
-                    'Time',
-                    timeText,
-                  ),
+                  const SizedBox(height: 20),
+                  Text("Kategori : ${transaction.category}"),
+                  Text("Payment : ${transaction.payment}"),
+                  Text("Tanggal : ${d.day}/${d.month}/${d.year}"),
                 ],
               ),
             ),
-
             const Spacer(),
-
-            // ==================================================
-            // DELETE BUTTON
-            // ==================================================
-
             SizedBox(
               width: double.infinity,
-              height: 54,
-
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  requestDelete(
-                    context,
-                  );
-                },
-
-                icon: const Icon(
-                  Icons.delete_outline,
-                ),
-
-                label: const Text(
-                  'Delete Transaction',
-                  style: TextStyle(
-                    fontWeight:
-                        FontWeight.w600,
-                  ),
-                ),
-
-                style:
-                    ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.red.shade900,
-
-                  foregroundColor:
-                      Colors.white,
-
-                  elevation: 0,
-
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(
-                      14,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xff111111),
+                      title: const Text("Hapus transaksi?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Batal"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Hapus"),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
+                  );
+
+                  if (ok == true) {
+                    await _delete(context);
+                  }
+                },
+                child: const Text("Delete Transaction"),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ==========================================================
-  // DETAIL ROW
-  // ==========================================================
-
-  Widget detailRow(
-    String title,
-    String value,
-  ) {
-    return Padding(
-      padding:
-          const EdgeInsets.only(
-        bottom: 16,
-      ),
-
-      child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
-        children: [
-          SizedBox(
-            width: 90,
-
-            child: Text(
-              title,
-
-              style: const TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-          ),
-
-          Expanded(
-            child: Text(
-              value,
-
-              textAlign:
-                  TextAlign.right,
-
-              style: const TextStyle(
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
