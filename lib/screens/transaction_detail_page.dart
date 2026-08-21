@@ -12,10 +12,10 @@ class TransactionDetailPage extends StatelessWidget {
   });
 
   // ==========================================================
-  // DELETE TRANSACTION
+  // DELETE
   // ==========================================================
 
-  Future<void> _delete(
+  Future<void> _deleteTransaction(
     BuildContext context,
   ) async {
     if (transaction.id == null) {
@@ -29,30 +29,31 @@ class TransactionDetailPage extends StatelessWidget {
       );
 
       debugPrint(
-        'RDTFINANCE DETAIL DELETE: '
-        'ID ${transaction.id} -> rows $rows',
+        'DELETE ID: ${transaction.id}',
+      );
+
+      debugPrint(
+        'DELETE ROWS: $rows',
       );
 
       if (!context.mounted) {
         return;
       }
 
-      // Hanya kembali dengan TRUE jika
-      // transaksi benar-benar terhapus dari database.
       if (rows > 0) {
-        Navigator.pop(context, true);
+        Navigator.of(context).pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Transaksi gagal dihapus.',
+              'Transaksi tidak ditemukan.',
             ),
           ),
         );
       }
     } catch (e) {
       debugPrint(
-        'RDTFINANCE DETAIL DELETE ERROR: $e',
+        'DELETE ERROR: $e',
       );
 
       if (!context.mounted) {
@@ -60,9 +61,9 @@ class TransactionDetailPage extends StatelessWidget {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Terjadi kesalahan saat menghapus transaksi.',
+            'Gagal menghapus transaksi: $e',
           ),
         ),
       );
@@ -70,18 +71,23 @@ class TransactionDetailPage extends StatelessWidget {
   }
 
   // ==========================================================
-  // DELETE CONFIRMATION
+  // SHOW DELETE DIALOG
   // ==========================================================
 
-  Future<void> _confirmDelete(
+  Future<void> _showDeleteDialog(
     BuildContext context,
   ) async {
-    final ok = await showDialog<bool>(
+    debugPrint(
+      'DELETE BUTTON PRESSED',
+    );
+
+    final result = await showDialog<bool>(
       context: context,
+      barrierDismissible: true,
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor:
-              const Color(0xff111111),
+              const Color(0xff151515),
 
           title: const Text(
             'Hapus transaksi?',
@@ -95,10 +101,9 @@ class TransactionDetailPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                  false,
-                );
+                ).pop(false);
               },
 
               child: const Text(
@@ -112,10 +117,9 @@ class TransactionDetailPage extends StatelessWidget {
 
             TextButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                  true,
-                );
+                ).pop(true);
               },
 
               child: const Text(
@@ -133,8 +137,15 @@ class TransactionDetailPage extends StatelessWidget {
       },
     );
 
-    if (ok == true && context.mounted) {
-      await _delete(context);
+    debugPrint(
+      'DELETE DIALOG RESULT: $result',
+    );
+
+    if (result == true &&
+        context.mounted) {
+      await _deleteTransaction(
+        context,
+      );
     }
   }
 
@@ -146,15 +157,12 @@ class TransactionDetailPage extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) {
-    final d = transaction.createdAt;
+    final d =
+        transaction.createdAt;
 
     return Scaffold(
       backgroundColor:
           Colors.black,
-
-      // ========================================================
-      // APP BAR
-      // ========================================================
 
       appBar: AppBar(
         backgroundColor:
@@ -167,10 +175,6 @@ class TransactionDetailPage extends StatelessWidget {
         ),
       ),
 
-      // ========================================================
-      // BODY
-      // ========================================================
-
       body: Padding(
         padding:
             const EdgeInsets.all(
@@ -179,9 +183,9 @@ class TransactionDetailPage extends StatelessWidget {
 
         child: Column(
           children: [
-            // ====================================================
+            // ==================================================
             // TRANSACTION CARD
-            // ====================================================
+            // ==================================================
 
             Container(
               width:
@@ -211,8 +215,6 @@ class TransactionDetailPage extends StatelessWidget {
                         .start,
 
                 children: [
-                  // DESCRIPTION
-
                   Text(
                     transaction.description,
 
@@ -227,8 +229,6 @@ class TransactionDetailPage extends StatelessWidget {
                   const SizedBox(
                     height: 12,
                   ),
-
-                  // AMOUNT
 
                   Text(
                     '${transaction.isIncome ? '+' : '-'}'
@@ -246,8 +246,6 @@ class TransactionDetailPage extends StatelessWidget {
                     height: 20,
                   ),
 
-                  // CATEGORY
-
                   Text(
                     'Kategori : '
                     '${transaction.category}',
@@ -257,8 +255,6 @@ class TransactionDetailPage extends StatelessWidget {
                     height: 6,
                   ),
 
-                  // PAYMENT
-
                   Text(
                     'Payment : '
                     '${transaction.payment}',
@@ -267,8 +263,6 @@ class TransactionDetailPage extends StatelessWidget {
                   const SizedBox(
                     height: 6,
                   ),
-
-                  // DATE
 
                   Text(
                     'Tanggal : '
@@ -280,9 +274,9 @@ class TransactionDetailPage extends StatelessWidget {
 
             const Spacer(),
 
-            // ====================================================
+            // ==================================================
             // DELETE BUTTON
-            // ====================================================
+            // ==================================================
 
             SizedBox(
               width:
@@ -291,7 +285,7 @@ class TransactionDetailPage extends StatelessWidget {
               child:
                   ElevatedButton(
                 onPressed: () {
-                  _confirmDelete(
+                  _showDeleteDialog(
                     context,
                   );
                 },
@@ -329,6 +323,10 @@ class TransactionDetailPage extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
+
+            const SizedBox(
+              height: 10,
             ),
           ],
         ),
